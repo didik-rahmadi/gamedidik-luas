@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petualangan Luas Bangun Datar</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- FONT SETUP --- */
+        @font-face { font-family: 'Chewy'; src: url('fonts/Chewy-Regular.ttf'); }
+        @font-face { font-family: 'Fredoka'; src: url('fonts/Fredoka-Regular.ttf'); }
+
+        /* --- GLOBAL RESET & SCALING --- */
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #2C3E50;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Fredoka', sans-serif;
+            user-select: none; touch-action: none;
+        }
+
+        #game-container {
+            width: 1920px; height: 1080px;
+            position: absolute; top: 50%; left: 50%;
+            background: #88c425 url('assets/map_background.png') no-repeat center center; 
+            background-size: cover;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            transform-origin: center center;
+        }
+
+        .hidden { display: none !important; }
+        .view-section { width: 100%; height: 100%; position: absolute; top:0; left:0; }
+
+        /* --- MAP NODES --- */
+        .map-node {
+            position: absolute; width: 100px; height: 100px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Chewy', cursive; font-size: 3rem; color: white;
+            cursor: pointer; transition: transform 0.2s, filter 0.2s;
+            border: 6px solid white; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            z-index: 10; background-color: #3498db;
+        }
+        .map-node i { display: none; } 
+        .map-node span { display: block; }
+        .map-node.locked { background-color: #ff0000; cursor: not-allowed; border-color: white; }
+        .map-node.locked i { display: block; font-size: 2.5rem; color: white; opacity: 0.6; text-shadow: 2px 2px 0 rgba(0,0,0,0.3);}
+        .map-node.locked span { display: none; }
+        .map-node.active { background: linear-gradient(to bottom, #f1c40f, #f39c12); animation: bounce 2s infinite; }
+        .map-node.active:hover { transform: scale(1.1); filter: brightness(1.1); }
+        .map-node.completed { background: linear-gradient(to bottom, #2ecc71, #27ae60); }
+        .map-node.completed span { display: none; }
+        .map-node.completed::after { content: '⭐'; font-size: 2.5rem; }
+
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        /* --- TOMBOL UTAMA --- */
+        .btn-reset-data {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px;
+            cursor: pointer; font-family: sans-serif; font-size: 1rem; z-index: 100;
+        }
+        
+        .btn-credits {
+            position: absolute; top: 30px; left: 1800px;
+            width: 80px; height: 80px; border-radius: 50%;
+            background: #fff; color: #d35400; border: 4px solid #d35400;
+            font-size: 3rem; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 50; box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        .btn-credits:hover { transform: scale(1.1); }
+
+        /* =========================================
+           CSS HALAMAN KREDIT / INFO (REVISI)
+           ========================================= */
+        #view-dev {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+        }
+        
+        .dev-slide {
+            width: 100%; height: 100%; 
+            position: absolute; top: 0; left: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: url('assets/bg_credits.png') no-repeat center center; 
+            background-size: cover;
+        }
+
+        /* Container Card (Revisi untuk Button di Tengah Border) */
+        .profile-card {
+            position: relative; /* Agar tombol absolute mengacu ke kotak ini */
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px 60px; border-radius: 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            text-align: center; 
+            animation: popIn 0.3s;
+            overflow: visible !important; /* PENTING: Agar tombol yg menjorok keluar tidak terpotong */
+            width: 70%; border: 6px solid #e67e22; padding: 40px;
+        }
+        /* Wrapper konten dalam agar bisa discroll tanpa memotong tombol */
+        .card-inner-scroll {
+            width: 100%; height: 100%;
+            overflow-y: auto; /* Scroll terjadi di sini */
+            padding-right: 10px; /* Jarak scrollbar */
+        }
+        /* Custom Scrollbar */
+        .card-inner-scroll::-webkit-scrollbar { width: 10px; }
+        .card-inner-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .card-inner-scroll::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 10px; }
+
+        /* Button Next/Prev di Tengah Border */
+        .btn-prev, .btn-next {
+            position: absolute;
+            top: 50%; transform: translateY(-50%); /* Tengah Vertikal */
+            width: 70px; height: 70px; border-radius: 50%;
+            background: #e67e22; color: white; border: 2px solid #e67e22;
+            font-size: 3rem; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+            transition: transform 0.2s; 
+            z-index: 200; /* Di atas card */
+        }
+        
+        /* Posisi Menjorok Keluar (-35px adalah setengah dari lebar tombol 70px) */
+        .btn-prev { left: -40px; } 
+        .btn-next { right: -40px; }
+
+        .btn-prev:hover, .btn-next:hover { transform: translateY(-50%) scale(1.1); background: #b92929; }
+
+        /* Elemen Lain */
+        .dev-logo-top { height: 100px; margin-bottom: 20px; }
+        .dev-header { margin-bottom: 20px; color: #2c3e50; }
+        .dev-h2 { font-size: 1.5rem; font-weight: 800; }
+        .dev-h3 { font-size: 1.2rem; font-weight: 700; margin: 5px 0; }
+        
+        .orange-line { width: 100%; height: 4px; background: #e67e22; margin: 20px 0; }
+        .dev-blue-line { width: 40%; height: 6px; background: #3498db; margin: 30px auto 0; border-radius: 10px; }
+
+        .credits-grid {
+            display: grid; grid-template-columns: 250px 30px 1fr;
+            gap: 10px 0; text-align: left; font-size: 1.3rem; color: #333;
+        }
+        .c-label { font-weight: bold; color: #2980b9; }
+        .c-sep { text-align: center; font-weight: bold; }
+        
+        .dev-photo { width: 250px; height: 250px; border-radius: 50%; border: 5px solid #3498db; object-fit: cover; margin-bottom: 20px; background: #ccc; }
+        .dev-name { font-family: 'Chewy'; font-size: 3rem; color: #2c3e50; margin: 0; }
+        .dev-unit { font-size: 1.5rem; color: #7f8c8d; font-weight: bold; }
+        
+        .social-links { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
+        .icon-sosmed { width: 50px; height: 50px; transition: transform 0.2s; }
+        .icon-sosmed:hover { transform: scale(1.2); }
+
+        .btn-home {
+            position: absolute; background: #e74c3c; color: white;
+            padding: 10px 30px; border-radius: 30px; border: 4px solid #fff;
+            font-family: 'Chewy'; font-size: 1.5rem; cursor: pointer;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.2);
+        }
+
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        
+        <div id="view-map" class="view-section">
+            <button class="btn-credits" onclick="openCredits()">
+                <i class="fas fa-info"></i>
+            </button>
+
+            <div id="node-1" class="map-node active" style="top: 25%; left: 19%;" onclick="enterLevel(1)"><span>1</span><i class="fas fa-lock"></i></div>
+            <div id="node-2" class="map-node locked" style="top: 49%; left: 17%;" onclick="enterLevel(2)"><span>2</span><i class="fas fa-lock"></i></div>
+            <div id="node-3" class="map-node locked" style="top: 67%; left: 23%;" onclick="enterLevel(3)"><span>3</span><i class="fas fa-lock"></i></div>
+            <div id="node-4" class="map-node locked" style="top: 48%; left: 35%;" onclick="enterLevel(4)"><span>4</span><i class="fas fa-lock"></i></div>
+            <div id="node-5" class="map-node locked" style="top: 25%; left: 52%;" onclick="enterLevel(5)"><span>5</span><i class="fas fa-lock"></i></div>
+            <div id="node-6" class="map-node locked" style="top: 50%; left: 62%;" onclick="enterLevel(6)"><span>6</span><i class="fas fa-lock"></i></div>
+            <div id="node-7" class="map-node locked" style="top: 27%; left: 74%;" onclick="enterLevel(7)"><span>7</span><i class="fas fa-lock"></i></div>
+            <div id="node-8" class="map-node locked" style="top: 48%; left: 84%;" onclick="enterLevel(8)"><span>8</span><i class="fas fa-lock"></i></div>
+
+            <button class="btn-reset-data" onclick="resetProgress()">⚠ Reset Progress</button>
+        </div>
+
+        <div id="view-dev" class="hidden">
+            <button class="btn-home" style="top: 30px; left: 1728px; z-index: 100;" onclick="closeCredits()">❌ TUTUP</button>
+
+            <div id="dev-slide-1" class="dev-slide">
+                <div class="profile-card">
+                    <button class="btn-next" onclick="switchDevSlide(2)">➡</button>
+                    
+                    <div class="card-inner-scroll">
+                        <img src="assets/Logo Tut Wuri Handayani.png" class="dev-logo-top" alt="Logo">
+                        <div class="dev-header">
+                            <div class="dev-h2">DIREKTORAT SEKOLAH DASAR</div>
+                            <div class="dev-h3">DIREKTORAT JENDERAL PENDIDIKAN ANAK USIA DINI, PENDIDIKAN DASAR, DAN PENDIDIKAN MENENGAH</div>
+                            <div class="dev-h2">KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</div>
+                        </div>
+                        <div class="orange-line"></div>
+                        <div class="credits-grid">
+                            <div class="c-label">Pengarah</div><div class="c-sep">:</div>
+                            <div class="c-val">Moch. Salim Somad, S.Kom., M.Pd., Direktorat Sekolah Dasar</div>
+
+                            <div class="c-label">Penanggung Jawab</div><div class="c-sep">:</div>
+                            <div class="c-val">Lanny Anggraini, S.Pd., M.A., Direktorat Sekolah Dasar</div>
+
+                            <div class="c-label">Pengembang</div><div class="c-sep">:</div>
+                            <div class="c-val">Didik Rahmadi, S.Pd.</div>
+
+                            <div class="c-label">Pengkaji Materi</div><div class="c-sep">:</div>
+                            <div class="c-val">Bintang Adhi Permana, M.Pd.</div>
+
+                            <div class="c-label">Pengkaji Media</div><div class="c-sep">:</div>
+                            <div class="c-val">
+                                1. Muh. Noor Ginanjar Jaelani, S.Pd., Direktorat Sekolah Dasar<br>
+                                2. Ine Rahmawati, S.Pd., M.Si., Direktorat Sekolah Dasar
+                            </div>
+
+                            <div style="height: 20px;"></div><div style="height: 20px;"></div><div style="height: 20px;"></div>
+
+                            <div class="c-label">Diterbitkan oleh</div><div class="c-sep">:</div>
+                            <div class="c-val">
+                                Direktorat Sekolah Dasar<br>
+                                Direktorat Jenderal Pendidikan Anak Usia Dini, Pendidikan Dasar, dan Pendidikan Menengah<br>
+                                Kementerian Pendidikan Dasar dan Menengah<br>
+                                Tahun 2025
+                            </div>
+                        </div>
+                        <div class="dev-blue-line"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dev-slide-2" class="dev-slide hidden">
+                <div class="profile-card">
+                    <button class="btn-prev" onclick="switchDevSlide(1)">⬅</button>
+                    <button class="btn-next" onclick="switchDevSlide(3)">➡</button>
+
+                    <div class="card-inner-scroll">
+                        <img src="assets/Foto Pengembang.png" class="dev-photo" alt="Foto Pengembang">
+                        <h2 class="dev-name">Didik Rahmadi, S.Pd.</h2>
+                        <div class="dev-unit">SDN Pejaten Timur 11</div>
+                        <div style="width: 100%; height: 4px; background: #eee; margin: 20px 0;"></div>
+                        <div class="social-links">
+                            <a href="https://didik-rahmadi.github.io/cv/" target="_blank"><img src="assets/logo_web.png" class="icon-sosmed" alt="Website"></a>
+                            <a href="https://instagram.com/didik.rahmadi" target="_blank"><img src="assets/logo_ig.png" class="icon-sosmed" alt="Instagram"></a>
+                        </div>
+                        <div class="dev-description" style="text-align: justify; line-height: 1.6; padding: 10px 20px; margin-top:20px;">
+                            <p style="font-size: 1.5rem; margin: 0; color:#555;">
+                                Media pembelajaran interaktif ini dirancang sebagai jembatan antara dunia pendidikan 
+                                dan teknologi digital. Dengan mengintegrasikan konsep <em>gamification</em> ke dalam materi ajar, 
+                                media ini mengubah proses belajar menjadi pengalaman yang dinamis.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dev-slide-3" class="dev-slide hidden">
+                <div class="profile-card">
+                    <button class="btn-prev" onclick="switchDevSlide(2)">⬅</button>
+                    
+                    <div class="card-inner-scroll">
+                        <h2 style="color: #2c3e50; font-size: 2.5rem; margin-bottom: 30px; border-bottom: 3px solid #ff9f43; display: inline-block; padding-bottom: 10px;">
+                            KREDIT & SUMBER
+                        </h2>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 1.3rem; text-align: left; width: 100%;">
+                            <div>
+                                <div style="margin-bottom: 25px;">
+                                    <h3 style="color: #e67e22; margin-bottom: 10px;">📚 Sumber Buku</h3>
+                                    <p style="line-height: 1.5; margin: 0;">Panduan Guru Matematika untuk SD/MI Fase C.</p>
+                                </div>
+                                <div style="margin-bottom: 25px;">
+                                    <h3 style="color: #e67e22; margin-bottom: 10px;">🖼️ Aset Gambar</h3>
+                                    <p style="margin: 0;">www.canva.com, Freepik</p>
+                                </div>
+                                <div>
+                                    <h3 style="color: #e67e22; margin-bottom: 10px;">🎙️ Pengisi Suara</h3>
+                                    <ol style="margin: 0; padding-left: 25px; line-height: 1.6;">
+                                        <li>Amira Queena Rakhmah</li>
+                                        <li>Aisyah Fathiya Rahmah</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 style="color: #e67e22; margin-bottom: 10px;">🎵 Musik Latar (BGM)</h3>
+                                <p style="font-style: italic; font-size: 1rem; margin-bottom: 10px; color: #666;">Sumber: YouTube Studio Audio Library</p>
+                                <ol style="margin: 0; padding-left: 25px; line-height: 1.8;">
+                                    <li>Ukulele Beach - Doug Maxwell</li>
+                                    <li>Rainbow Forest - Quincas Moreira</li>
+                                    <li>Twirly Tops - The Green Orbs</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const totalLevels = 8;
+        let maxUnlocked = parseInt(localStorage.getItem('mathAdventure_maxLevel')) || 1;
+
+        window.addEventListener('load', () => { scaleContainer(); updateMapVisuals(); });
+        window.addEventListener('resize', scaleContainer);
+
+        function scaleContainer() {
+            const container = document.getElementById('game-container');
+            const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+
+        function updateMapVisuals() {
+            for (let i = 1; i <= totalLevels; i++) {
+                const node = document.getElementById(`node-${i}`);
+                node.className = 'map-node';
+                if (i < maxUnlocked) { node.classList.add('completed'); } 
+                else if (i === maxUnlocked) { node.classList.add('active'); } 
+                else { node.classList.add('locked'); }
+            }
+        }
+
+        function enterLevel(levelNum) {
+            if (levelNum > maxUnlocked) { alert("Selesaikan level sebelumnya dulu! 🔒"); return; }
+            if (levelNum === 1) { window.location.href = 'level-1.html'; } 
+            else { alert("Level " + levelNum + " sedang dalam pembangunan! 🚧"); }
+        }
+
+        function resetProgress() {
+            if(confirm("Yakin ingin mereset progres?")) {
+                localStorage.removeItem('mathAdventure_maxLevel');
+                maxUnlocked = 1; updateMapVisuals();
+            }
+        }
+
+        function openCredits() {
+            document.getElementById('view-dev').classList.remove('hidden');
+            switchDevSlide(1); 
+        }
+
+        function closeCredits() {
+            document.getElementById('view-dev').classList.add('hidden');
+        }
+
+        function switchDevSlide(n) {
+            for(let i=1; i<=3; i++) {
+                document.getElementById('dev-slide-'+i).classList.add('hidden');
+            }
+            document.getElementById('dev-slide-'+n).classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
