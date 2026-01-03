@@ -1,0 +1,255 @@
+/* =========================================
+   1. FONT SETUP & GLOBAL RESET
+   ========================================= */
+@font-face { font-family: 'Chewy'; src: url('fonts/Chewy-Regular.ttf'); }
+@font-face { font-family: 'Fredoka'; src: url('fonts/Fredoka-Regular.ttf'); }
+
+body, html {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background-color: #2C3E50;
+    overflow: hidden;
+    display: flex; justify-content: center; align-items: center;
+    font-family: 'Fredoka', sans-serif;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+    -webkit-tap-highlight-color: transparent; /* Fix Android highlight */
+}
+
+/* =========================================
+   2. GAME CONTAINER & SCALING SYSTEM
+   ========================================= */
+#game-container {
+    width: 1920px; height: 1080px;
+    position: absolute; top: 50%; left: 50%;
+    /* Background Image ditentukan di masing-masing HTML agar bisa beda-beda */
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    overflow: hidden; 
+    transform-origin: center center;
+    
+    /* Logika Anti-Glitch (Sembunyi dulu baru muncul) */
+    opacity: 0; 
+    transition: opacity 0.5s ease-in-out;
+}
+
+#game-container.loaded { opacity: 1; }
+
+.hidden { display: none !important; }
+.view-section { width: 100%; height: 100%; position: absolute; top:0; left:0; }
+
+/* =========================================
+   3. NAVIGATION BUTTONS (Global)
+   ========================================= */
+.btn-reset-data {
+    position: absolute; bottom: 20px; right: 20px;
+    background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px;
+    cursor: pointer; font-family: sans-serif; font-size: 1rem; z-index: 100;
+}
+
+.btn-credits {
+    position: absolute; top: 30px; left: 1800px; /* Atau sesuaikan posisi */
+    width: 80px; height: 80px; border-radius: 50%;
+    background: #fff; color: #d35400; border: 4px solid #d35400;
+    font-size: 3rem; display: flex; justify-content: center; align-items: center;
+    cursor: pointer; z-index: 50; box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+.btn-credits:hover { transform: scale(1.1); }
+
+.btn-back-map, .btn-home {
+    position: absolute; top: 40px; left: 40px;
+    background: #e74c3c; color: white;
+    padding: 10px 30px; border-radius: 30px; border: 4px solid #fff;
+    font-family: 'Chewy'; font-size: 1.5rem; cursor: pointer; z-index: 100;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.2);
+}
+.btn-back-map:active, .btn-home:active { transform: translateY(4px); box-shadow: none; }
+
+/* Posisi khusus tombol Close di Credits */
+#view-dev .btn-home { left: 1728px; top: 30px; } 
+
+/* =========================================
+   4. MAP NODES (INDEX ONLY)
+   ========================================= */
+.map-node {
+    position: absolute; width: 100px; height: 100px; border-radius: 50%;
+    display: flex; justify-content: center; align-items: center;
+    font-family: 'Chewy', cursive; font-size: 3rem; color: white;
+    cursor: pointer; transition: transform 0.2s, filter 0.2s;
+    border: 6px solid white; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    z-index: 10; background-color: #3498db;
+}
+.map-node i { display: none; } 
+.map-node span { display: block; }
+
+/* State Locked */
+.map-node.locked { background-color: #34495e; cursor: not-allowed; border-color: #7f8c8d; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+.map-node.locked i { display: block; font-size: 3rem; color: white; opacity: 0.8; text-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
+.map-node.locked span { display: none; }
+
+/* State Active & Completed */
+.map-node.active { background: linear-gradient(to bottom, #f1c40f, #f39c12); animation: bounce 2s infinite; }
+.map-node.active:hover { transform: scale(1.1); filter: brightness(1.1); }
+.map-node.completed { background: linear-gradient(to bottom, #2ecc71, #27ae60); }
+.map-node.completed span { display: none; }
+.map-node.completed::after { content: '⭐'; font-size: 2.5rem; }
+
+/* =========================================
+   5. CREDITS / DEV SLIDES (INDEX ONLY)
+   ========================================= */
+#view-dev {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.9); z-index: 2000;
+}
+
+.dev-slide {
+    width: 100%; height: 100%; position: absolute; top: 0; left: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: url('assets/bg_credits.png') no-repeat center center; background-size: cover;
+}
+
+.profile-card {
+    position: relative; background: rgba(255, 255, 255, 0.95);
+    width: 70%; padding: 40px; border-radius: 40px; border: 6px solid #e67e22;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center;
+    animation: floatIn 1s ease-out; overflow: visible !important;
+}
+
+.card-inner-scroll {
+    width: 100%; height: 100%; overflow-y: auto; padding-right: 10px;
+}
+/* Custom Scrollbar */
+.card-inner-scroll::-webkit-scrollbar { width: 10px; }
+.card-inner-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+.card-inner-scroll::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 10px; }
+
+/* Navigasi Next/Prev di tengah border */
+.btn-prev, .btn-next {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 70px; height: 70px; border-radius: 50%;
+    background: #e67e22; color: white; border: 2px solid #e67e22;
+    font-size: 3rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.2s; z-index: 200;
+}
+.btn-prev { left: -40px; } .btn-next { right: -40px; }
+.btn-prev:hover, .btn-next:hover { transform: translateY(-50%) scale(1.1); background: #2ecc71; }
+
+/* Elemen Typography Credits */
+.dev-logo-top { height: 100px; margin-bottom: 20px; }
+.dev-header { margin-bottom: 20px; color: #2c3e50; }
+.dev-h2 { font-size: 1.5rem; font-weight: 800; }
+.dev-h3 { font-size: 1.2rem; font-weight: 700; margin: 5px 0; }
+.orange-line { width: 100%; height: 4px; background: #e67e22; margin: 20px 0; }
+.dev-blue-line { width: 40%; height: 6px; background: #3498db; margin: 30px auto 0; border-radius: 10px; }
+
+.credits-grid { display: grid; grid-template-columns: 250px 30px 1fr; gap: 10px 0; text-align: left; font-size: 1.3rem; color: #333; }
+.c-label { font-weight: bold; color: #2980b9; }
+.c-sep { text-align: center; font-weight: bold; }
+
+.dev-photo { width: 250px; height: 250px; border-radius: 50%; border: 5px solid #3498db; object-fit: cover; margin-bottom: 20px; background: #ccc; }
+.dev-name { font-family: 'Chewy'; font-size: 3rem; color: #2c3e50; margin: 0; }
+.dev-unit { font-size: 1.5rem; color: #7f8c8d; font-weight: bold; }
+.social-links { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
+.icon-sosmed { width: 50px; height: 50px; transition: transform 0.2s; }
+.icon-sosmed:hover { transform: scale(1.2); }
+
+/* =========================================
+   6. LEVEL 1 SPECIFIC STYLES
+   ========================================= */
+.slide-section { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+.level-title { font-family: 'Chewy'; font-size: 4rem; color: #00838F; margin: 0; }
+.header-area { text-align: center; margin-top: 30px; margin-bottom: 20px; }
+
+.lvl1-game-area {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 100%; height: 75%; gap: 30px;
+}
+
+.lvl1-shapes-container { display: flex; gap: 40px; justify-content: center; }
+
+.lvl1-dropzone {
+    width: 220px; height: 320px;
+    background: rgba(255,255,255,0.7);
+    border: 5px dashed #00838F; border-radius: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 20px; transition: all 0.3s;
+}
+.lvl1-dropzone.dragover { background: #E0F2F1; transform: scale(1.05); border-style: solid; }
+.lvl1-dropzone.correct { border-color: #2ecc71; background: #d5f5e3; border-style: solid; }
+
+.lvl1-shape-img {
+    width: 100%; height: 160px; object-fit: contain;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.2));
+    margin-bottom: 10px; pointer-events: none;
+}
+
+.lvl1-slot {
+    width: 100%; height: 60px;
+    border: 2px solid #aaa; border-radius: 10px;
+    background: rgba(0,0,0,0.1); color: #777;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: bold; pointer-events: none;
+}
+
+.lvl1-labels-container {
+    display: flex; gap: 20px; padding: 25px;
+    background: rgba(0, 131, 143, 0.2); border-radius: 20px;
+    min-width: 500px; justify-content: center; align-items: center;
+    border: 4px solid white;
+}
+
+.lvl1-draggable {
+    background: #FFD93D; color: #d35400;
+    padding: 15px 30px; border-radius: 15px;
+    font-family: 'Chewy'; font-size: 1.8rem;
+    cursor: grab; border: 3px solid #fff;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.2);
+    transition: transform 0.1s; touch-action: none; 
+}
+.lvl1-draggable:active { cursor: grabbing; transform: scale(1.1); }
+
+/* =========================================
+   7. MODAL STYLES (GENERIC)
+   ========================================= */
+.modal-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 200;
+    display: flex; justify-content: center; align-items: center;
+    animation: fadeIn 0.3s;
+}
+
+.modal-box {
+    background: white; border-radius: 30px; padding: 40px;
+    text-align: center; width: 40%; border: 8px solid #FFD93D;
+    box-shadow: 0 0 50px rgba(255, 217, 61, 0.5);
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-title { font-family: 'Chewy'; font-size: 3.5rem; margin: 0 0 20px 0; color: #d35400; }
+.modal-text { font-size: 1.8rem; color: #555; margin-bottom: 30px; line-height: 1.5; }
+
+.btn-modal {
+    padding: 15px 40px; font-family: 'Chewy'; font-size: 2rem;
+    border: none; border-radius: 50px; cursor: pointer; margin: 0 10px;
+    border: 4px solid transparent; transition: all 0.2s;
+}
+
+.btn-confirm-yes { background: #e74c3c; color: white; border-color: #c0392b; }
+.btn-confirm-no { background: #2ecc71; color: white; border-color: #27ae60; }
+.btn-next-slide { 
+    background: linear-gradient(to bottom, #3498db, #2980b9); 
+    color: white; border: 4px solid #fff; box-shadow: 0 8px 0 #1c5980;
+}
+.btn-next-slide:active { transform: translateY(4px); box-shadow: none; }
+
+/* =========================================
+   8. KEYFRAME ANIMATIONS
+   ========================================= */
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+@keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+@keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes floatIn {
+    0% { transform: translateY(-50px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
