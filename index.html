@@ -358,11 +358,21 @@
             const targetHeight = 1080;
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
-            
-            // Hitung skala (Fit to Screen)
-            const scale = Math.min(windowWidth / targetWidth, windowHeight / targetHeight);
-            
-            // Terapkan Transformasi
+            const targetRatio = targetWidth / targetHeight;
+            const windowRatio = windowWidth / windowHeight;
+            let scale;
+
+        // Logika "Letterbox": Pasikan seluruh game masuk ke layar tanpa terpotong
+            if (windowRatio < targetRatio) {
+                // Layar lebih sempit dari game (Fit to Width)
+                scale = windowWidth / targetWidth;
+            } else {
+                // Layar lebih pendek dari game (Fit to Height)
+                scale = windowHeight / targetHeight;
+            }
+
+            // Terapkan Scale dan Centering sekaligus
+            // translate(-50%, -50%) memastikan div tetap di tengah layar
             container.style.transform = `translate(-50%, -50%) scale(${scale})`;
         }
 
