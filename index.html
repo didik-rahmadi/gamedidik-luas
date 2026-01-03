@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Petualangan Luas Bangun Datar</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -20,6 +20,8 @@
             display: flex; justify-content: center; align-items: center;
             font-family: 'Fredoka', sans-serif;
             user-select: none; touch-action: none;
+            /* Mencegah highlight biru saat tap di Android */
+            -webkit-tap-highlight-color: transparent; 
         }
 
         #game-container {
@@ -30,6 +32,15 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
             overflow: hidden;
             transform-origin: center center;
+            
+            /* PERBAIKAN 2: Sembunyikan container saat awal loading */
+            opacity: 0; 
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* Kelas ini akan ditambahkan oleh JS setelah ukuran layar pas */
+        #game-container.loaded {
+            opacity: 1;
         }
 
         .hidden { display: none !important; }
@@ -75,7 +86,7 @@
         .btn-credits:hover { transform: scale(1.1); }
 
         /* =========================================
-           CSS HALAMAN KREDIT / INFO (REVISI)
+           CSS HALAMAN KREDIT / INFO
            ========================================= */
         #view-dev {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -91,46 +102,45 @@
             background-size: cover;
         }
 
-        /* Container Card (Revisi untuk Button di Tengah Border) */
+        /* Container Card */
         .profile-card {
-            position: relative; /* Agar tombol absolute mengacu ke kotak ini */
+            position: relative;
             background: rgba(255, 255, 255, 0.95);
             padding: 40px 60px; border-radius: 40px;
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             text-align: center; 
-            animation: popIn 0.3s;
-            overflow: visible !important; /* PENTING: Agar tombol yg menjorok keluar tidak terpotong */
+            animation: floatIn 1s ease-out;
+            overflow: visible !important; 
             width: 70%; border: 6px solid #e67e22; padding: 40px;
+            
         }
-        /* Wrapper konten dalam agar bisa discroll tanpa memotong tombol */
+        /* Wrapper konten */
         .card-inner-scroll {
             width: 100%; height: 100%;
-            overflow-y: auto; /* Scroll terjadi di sini */
-            padding-right: 10px; /* Jarak scrollbar */
+            overflow-y: auto; padding-right: 10px; 
         }
         /* Custom Scrollbar */
         .card-inner-scroll::-webkit-scrollbar { width: 10px; }
         .card-inner-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         .card-inner-scroll::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 10px; }
 
-        /* Button Next/Prev di Tengah Border */
+        /* Button Next/Prev */
         .btn-prev, .btn-next {
             position: absolute;
-            top: 50%; transform: translateY(-50%); /* Tengah Vertikal */
+            top: 50%; transform: translateY(-50%); 
             width: 70px; height: 70px; border-radius: 50%;
             background: #e67e22; color: white; border: 2px solid #e67e22;
             font-size: 3rem; cursor: pointer; 
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
             transition: transform 0.2s; 
-            z-index: 200; /* Di atas card */
+            z-index: 200; 
         }
         
-        /* Posisi Menjorok Keluar (-35px adalah setengah dari lebar tombol 70px) */
         .btn-prev { left: -40px; } 
         .btn-next { right: -40px; }
 
-        .btn-prev:hover, .btn-next:hover { transform: translateY(-50%) scale(1.1); background: #b92929; }
+        .btn-prev:hover, .btn-next:hover { transform: translateY(-50%) scale(1.1); background: #2ecc71; }
 
         /* Elemen Lain */
         .dev-logo-top { height: 100px; margin-bottom: 20px; }
@@ -163,7 +173,17 @@
             box-shadow: 0 5px 0 rgba(0,0,0,0.2);
         }
 
-        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        /* Definisi Animasi Float In (Melayang dari atas) */
+        @keyframes floatIn {
+            0% { 
+                transform: translateY(-50px); /* Mulai dari posisi agak atas */
+                opacity: 0; /* Mulai transparan */
+            }
+            100% { 
+                transform: translateY(0); /* Masuk ke posisi normal */
+                opacity: 1; /* Muncul penuh */
+            }
+        }
 
     </style>
 </head>
@@ -309,12 +329,40 @@
         const totalLevels = 8;
         let maxUnlocked = parseInt(localStorage.getItem('mathAdventure_maxLevel')) || 1;
 
-        window.addEventListener('load', () => { scaleContainer(); updateMapVisuals(); });
-        window.addEventListener('resize', scaleContainer);
+        // --- PERBAIKAN LOGIKA SCALING ---
+        
+        // 1. Jalankan scaling SEGERA saat HTML siap (sebelum gambar loading selesai)
+        document.addEventListener('DOMContentLoaded', () => {
+            scaleContainer();
+            updateMapVisuals();
+            
+            // Tampilkan game setelah delay singkat agar tidak glitch
+            setTimeout(() => {
+                document.getElementById('game-container').classList.add('loaded');
+            }, 100);
+        });
+
+        // 2. Jalankan lagi saat window full load (jaga-jaga jika ada aset yg mengubah ukuran)
+        window.addEventListener('load', scaleContainer);
+        
+        // 3. Tambahkan Debounce pada Resize (Agar lebih stabil saat rotasi HP)
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(scaleContainer, 100);
+        });
 
         function scaleContainer() {
             const container = document.getElementById('game-container');
-            const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const targetWidth = 1920;
+            const targetHeight = 1080;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            // Hitung skala (Fit to Screen)
+            const scale = Math.min(windowWidth / targetWidth, windowHeight / targetHeight);
+            
+            // Terapkan Transformasi
             container.style.transform = `translate(-50%, -50%) scale(${scale})`;
         }
 
