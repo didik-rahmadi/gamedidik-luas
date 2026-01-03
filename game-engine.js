@@ -10,35 +10,34 @@ let maxUnlocked = parseInt(localStorage.getItem('mathAdventure_maxLevel')) || 1;
 // --- 2. SISTEM SCALING & LOADING (Jantung Aplikasi) ---
 
 document.addEventListener('DOMContentLoaded', () => {
-    // A. Jalankan Scaling
-    scaleContainer();
+    scaleContainer(); // Hitung skala awal
     
-    // B. Cek Halaman: Apakah ini Peta (Index)?
+    // Logika visual map & level tetap sama...
     if (document.getElementById('view-map')) {
-        updateMapVisuals(); // Update gembok
+        updateMapVisuals();
     }
-
-    // C. Cek Halaman: Apakah ini Level Game?
-    // Jika ada fungsi randomizeLabels (milik Level 1), jalankan.
     if (typeof randomizeLabels === 'function') {
         randomizeLabels();
     }
 
-    // D. Munculkan Game (Anti-Glitch)
+    // Munculkan container setelah scaling selesai agar tidak "glitch"
     setTimeout(() => {
         const container = document.getElementById('game-container');
         if(container) container.classList.add('loaded');
     }, 100);
 });
 
-// Event Listeners untuk Kestabilan Tampilan
-window.addEventListener('load', scaleContainer);
-
-let resizeTimer;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(scaleContainer, 100);
+// Event Listener yang LEBIH KUAT untuk HP
+window.addEventListener('resize', scaleContainer);
+window.addEventListener('orientationchange', () => {
+    // Beri jeda sedikit saat memutar HP agar browser selesai merender layout baru
+    setTimeout(scaleContainer, 200);
 });
+
+// Support modern untuk mendeteksi zoom/keyboard di HP
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', scaleContainer);
+}
 
 function scaleContainer() {
     const container = document.getElementById('game-container');
@@ -46,20 +45,29 @@ function scaleContainer() {
 
     const targetWidth = 1920;
     const targetHeight = 1080;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    const targetRatio = targetWidth / targetHeight;
-    const windowRatio = windowWidth / windowHeight;
-    let scale;
 
-    // Logika Letterbox
-    if (windowRatio < targetRatio) {
-        scale = windowWidth / targetWidth;
-    } else {
-        scale = windowHeight / targetHeight;
-    }
+    // Gunakan visualViewport jika ada (lebih akurat untuk HP), kalau tidak ada pakai window biasa
+    const winW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    const winH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
+    // Hitung rasio untuk Lebar dan Tinggi
+    const scaleX = winW / targetWidth;
+    const scaleY = winH / targetHeight;
+
+    // KUNCI UTAMA: Gunakan Math.min
+    // Ini memastikan game selalu masuk ke layar (Letterbox), tidak akan pernah terpotong.
+    // Skala diambil dari sisi yang "paling sempit".
+    const scale = Math.min(scaleX, scaleY);
+
+    // Terapkan Transformasi
     container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    
+    // Opsional: Pastikan container tetap di tengah layar visual
+    // (Kadang perlu jika keyboard HP muncul)
+    if (window.visualViewport) {
+        container.style.left = `${window.visualViewport.offsetLeft + winW / 2}px`;
+        container.style.top = `${window.visualViewport.offsetTop + winH / 2}px`;
+    }
 }
 
 // --- 3. LOGIKA PETA (INDEX) ---
